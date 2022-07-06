@@ -1,18 +1,12 @@
 import re
-import random
-
-import numpy as np
+import nltk
 import pandas as pd
 import tweepy as tw
+from deep_translator import GoogleTranslator
+from textblob import TextBlob
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
-import torch
-from torch import optim
-import torch.nn.functional as F
-from tqdm import tqdm
-
-from transformers import BertForSequenceClassification, BertConfig, BertTokenizer
-from nltk.tokenize import TweetTokenizer
-
+nltk.download('vader_lexicon')
 
 def twitter_access(twitter_account):
 
@@ -45,7 +39,7 @@ def tweets_fetching(api, keyword, num_of_tweets, since_date=None, until_date=Non
   for tweet in tweets:
     raw_tweets_list.append(tweet.full_text)
   
-  return raw_tweets_list 
+  return raw_tweets_list
 
 def remove_emojis(data):
     emoj = re.compile("["
@@ -86,27 +80,27 @@ def text_cleaning(text):
 
   return text
 
-### ============================ ###
+def translator(text):
+  text = GoogleTranslator(source='id', target='en').translate(text)
+  return text
 
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    
-def count_param(module, trainable=False):
-    if trainable:
-        return sum(p.numel() for p in module.parameters() if p.requires_grad)
+def sentiment_determination(tweets_df):
+
+  tweets_df[['polarity', 'subjectivity']] = tweets_df['translate'].apply(lambda Text: pd.Series(TextBlob(Text).sentiment))
+
+  for index, row in tweets_df['translate'].iteritems():
+    score = SentimentIntensityAnalyzer().polarity_scores(row)
+
+    if score['neg'] > score['pos']:
+      tweets_df.loc[index, 'sentiment'] = 'negative'
+    elif score['pos'] > score['neg']:
+      tweets_df.loc[index, 'sentiment'] = 'positive'
     else:
-        return sum(p.numel() for p in module.parameters())
-    
-def get_lr(optimizer):
-    for param_group in optimizer.param_groups:
-        return param_group['lr']
+      tweets_df.loc[index, 'sentiment'] = 'neutral'
 
-def metrics_to_string(metric_dict):
-    string_list = []
-    for key, value in metric_dict.items():
-        string_list.append('{}:{:.2f}'.format(key, value))
-    return ' '.join(string_list)
+    tweets_df.loc[index, 'pos'] = score['pos']
+    tweets_df.loc[index, 'neu'] = score['neu']
+    tweets_df.loc[index, 'neg'] = score['neg']
+    tweets_df.loc[index, 'compound'] = score['compound']
 
+  return tweets_df
