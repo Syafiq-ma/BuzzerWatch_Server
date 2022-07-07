@@ -5,10 +5,6 @@ from sentiment import sentiment
 app = Flask(__name__)
 CORS(app)
 
-@app.route("/")
-def home():
-    return render_template('index.html')
-
 @app.route("/twitter", methods=['POST'])
 def result():
     data = request.json['hashtag']
