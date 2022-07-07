@@ -12,10 +12,8 @@ def home():
 @app.route("/twitter", methods=['POST'])
 def result():
     data = request.json['hashtag']
-    print(data)
     res = sentiment(data)
     responses = res.to_json(orient = "table")
-    print(responses)
     return responses
 
 if __name__ == '__main__':
